@@ -267,11 +267,11 @@ function merge(into: Map<string, Hit>, from: Map<string, Hit>): void {
 }
 
 export function compile(secrets: Secret[], options: Options = {}): Scrubber {
-  const c = prepare(secrets);
+  const c = prepare(secrets.map((secret) => ({ ...secret })));
   const decoder = new TextDecoder();
   const idleMs = options.idleMs ?? 250;
   const scrubBytes = (input: Uint8Array) => {
-    if (secrets.length === 0) return { bytes: input.slice(), hits: [] };
+    if (c.secrets.length === 0) return { bytes: input.slice(), hits: [] };
     const result = pass(c, input, true);
     return { bytes: result.output, hits: [...result.hits.values()] };
   };
@@ -288,7 +288,7 @@ export function compile(secrets: Secret[], options: Options = {}): Scrubber {
       let pending: Uint8Array = EMPTY;
       const hits = new Map<string, Hit>();
       const run = (final: boolean) => {
-        if (secrets.length === 0 || pending.length === 0) {
+        if (c.secrets.length === 0 || pending.length === 0) {
           const out = pending;
           pending = EMPTY;
           return out;

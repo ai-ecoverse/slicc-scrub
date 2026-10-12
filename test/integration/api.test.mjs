@@ -60,3 +60,12 @@ test('idle on nothing returns nothing', () => {
   const stream = compile([TOKEN]).stream();
   assert.equal(stream.idle().length, 0);
 });
+
+test('the compiled scrubber keeps its own copy of the secrets', () => {
+  const list = [{ ...TOKEN }];
+  const scrubber = compile(list);
+  list.length = 0;
+  assert.equal(scrubber.text(TOKEN.value).text, TOKEN.placeholder);
+  const stream = scrubber.stream();
+  assert.equal(decode(stream.push(encode(`${TOKEN.value} `))), `${TOKEN.placeholder} `);
+});
