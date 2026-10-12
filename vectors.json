@@ -1,0 +1,704 @@
+{
+  "format": 1,
+  "fragment": 16,
+  "minValue": 8,
+  "idleMs": 250,
+  "cases": [
+    {
+      "name": "nothing to scrub",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "hello world, no secrets here\n",
+      "output": "hello world, no secrets here\n",
+      "hits": []
+    },
+    {
+      "name": "raw in a header",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "Authorization: Bearer ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8\r\n",
+      "output": "Authorization: Bearer fnox_proxy_000000000000000000000001\r\n",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "raw is the whole input",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+      "output": "fnox_proxy_000000000000000000000001",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "raw three times",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8 ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+      "output": "fnox_proxy_000000000000000000000001 fnox_proxy_000000000000000000000001fnox_proxy_000000000000000000000001",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "raw",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "name": "two values side by side",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        },
+        {
+          "name": "NPM_TOKEN",
+          "value": "npm_Zz9Yy8Xx7Ww6",
+          "placeholder": "fnox_proxy_000000000000000000000002"
+        }
+      ],
+      "input": "npm_Zz9Yy8Xx7Ww6ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8!",
+      "output": "fnox_proxy_000000000000000000000002fnox_proxy_000000000000000000000001!",
+      "hits": [
+        {
+          "name": "NPM_TOKEN",
+          "form": "raw",
+          "count": 1
+        },
+        {
+          "name": "GH_TOKEN",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a short value is raw only",
+      "secrets": [
+        {
+          "name": "PIN",
+          "value": "k9#Lm2$Q",
+          "placeholder": "fnox_proxy_000000000000000000000005"
+        }
+      ],
+      "input": "pin=k9#Lm2$Q and part k9#Lm2$ stays",
+      "output": "pin=fnox_proxy_000000000000000000000005 and part k9#Lm2$ stays",
+      "hits": [
+        {
+          "name": "PIN",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a fragment of 20 bytes",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "head -c: ghp_A1b2C3d4E5f6G7h8\n",
+      "output": "head -c: [redacted:GH_TOKEN]\n",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a fragment from the middle",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "cut: 2C3d4E5f6G7h8I9j0K1l2M3.",
+      "output": "cut: [redacted:GH_TOKEN].",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a fragment of exactly 16 bytes",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "xK1l2M3n4O5p6Q7r8y",
+      "output": "x[redacted:GH_TOKEN]y",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "15 bytes are not a fragment",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "xghp_A1b2C3d4E5fy",
+      "output": "xghp_A1b2C3d4E5fy",
+      "hits": []
+    },
+    {
+      "name": "a value split over two results",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "ghp_A1b2C3d4E5f6G7h8\n---\nI9j0K1l2M3n4O5p6Q7r8",
+      "output": "[redacted:GH_TOKEN]\n---\n[redacted:GH_TOKEN]",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "fragment",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "JSON-escaped",
+      "secrets": [
+        {
+          "name": "DB_PASS",
+          "value": "p@ss w/rd+&<\"'>",
+          "placeholder": "fnox_proxy_000000000000000000000003"
+        }
+      ],
+      "input": "{\"password\":\"p@ss w/rd+&<\\\"'>\"}",
+      "output": "{\"password\":\"[redacted:DB_PASS]\"}",
+      "hits": [
+        {
+          "name": "DB_PASS",
+          "form": "json",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "JSON with escaped slashes",
+      "secrets": [
+        {
+          "name": "DB_PASS",
+          "value": "p@ss w/rd+&<\"'>",
+          "placeholder": "fnox_proxy_000000000000000000000003"
+        }
+      ],
+      "input": "{\"p\":\"p@ss w\\/rd+&<\\\"'>\"}",
+      "output": "{\"p\":\"[redacted:DB_PASS]\"}",
+      "hits": [
+        {
+          "name": "DB_PASS",
+          "form": "json",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "JSON with \\u escapes, lower and upper",
+      "secrets": [
+        {
+          "name": "UNI_KEY",
+          "value": "clé-secrète-ünïcode-✓",
+          "placeholder": "fnox_proxy_000000000000000000000004"
+        }
+      ],
+      "input": "\"cl\\u00e9-secr\\u00e8te-\\u00fcn\\u00efcode-\\u2713\" \"cl\\u00E9-secr\\u00E8te-\\u00FCn\\u00EFcode-\\u2713\"",
+      "output": "\"[redacted:UNI_KEY]\" \"[redacted:UNI_KEY]\"",
+      "hits": [
+        {
+          "name": "UNI_KEY",
+          "form": "json",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "raw non-ASCII",
+      "secrets": [
+        {
+          "name": "UNI_KEY",
+          "value": "clé-secrète-ünïcode-✓",
+          "placeholder": "fnox_proxy_000000000000000000000004"
+        }
+      ],
+      "input": "k=clé-secrète-ünïcode-✓",
+      "output": "k=fnox_proxy_000000000000000000000004",
+      "hits": [
+        {
+          "name": "UNI_KEY",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "percent-encoded",
+      "secrets": [
+        {
+          "name": "DB_PASS",
+          "value": "p@ss w/rd+&<\"'>",
+          "placeholder": "fnox_proxy_000000000000000000000003"
+        }
+      ],
+      "input": "?p=p%40ss%20w%2Frd%2B%26%3C%22'%3E&x=1",
+      "output": "?p=[redacted:DB_PASS]&x=1",
+      "hits": [
+        {
+          "name": "DB_PASS",
+          "form": "percent",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "percent-encoded with lower hex",
+      "secrets": [
+        {
+          "name": "DB_PASS",
+          "value": "p@ss w/rd+&<\"'>",
+          "placeholder": "fnox_proxy_000000000000000000000003"
+        }
+      ],
+      "input": "?p=p%40ss%20w%2frd%2b%26%3c%22'%3e",
+      "output": "?p=[redacted:DB_PASS]",
+      "hits": [
+        {
+          "name": "DB_PASS",
+          "form": "percent",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "form-encoded",
+      "secrets": [
+        {
+          "name": "DB_PASS",
+          "value": "p@ss w/rd+&<\"'>",
+          "placeholder": "fnox_proxy_000000000000000000000003"
+        }
+      ],
+      "input": "p=p%40ss+w%2Frd%2B%26%3C%22%27%3E&q=2",
+      "output": "p=[redacted:DB_PASS]&q=2",
+      "hits": [
+        {
+          "name": "DB_PASS",
+          "form": "percent",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "HTML entities",
+      "secrets": [
+        {
+          "name": "DB_PASS",
+          "value": "p@ss w/rd+&<\"'>",
+          "placeholder": "fnox_proxy_000000000000000000000003"
+        }
+      ],
+      "input": "<td>p@ss w/rd+&amp;&lt;&quot;&#39;&gt;</td><td>p@ss w/rd+&amp;&lt;&quot;&#x27;&gt;</td>",
+      "output": "<td>[redacted:DB_PASS]</td><td>[redacted:DB_PASS]</td>",
+      "hits": [
+        {
+          "name": "DB_PASS",
+          "form": "html",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "base64, padded and unpadded",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "Z2hwX0ExYjJDM2Q0RTVmNkc3aDhJOWowSzFsMk0zbjRPNXA2UTdyOA== Z2hwX0ExYjJDM2Q0RTVmNkc3aDhJOWowSzFsMk0zbjRPNXA2UTdyOA ",
+      "output": "[redacted:GH_TOKEN] [redacted:GH_TOKEN] ",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "base64",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "base64url",
+      "secrets": [
+        {
+          "name": "B64_KEY",
+          "value": "~~~>>>???___~~~>>>???",
+          "placeholder": "fnox_proxy_000000000000000000000006"
+        }
+      ],
+      "input": "t=fn5-Pj4-Pz8_X19ffn5-Pj4-Pz8_.",
+      "output": "t=[redacted:B64_KEY].",
+      "hits": [
+        {
+          "name": "B64_KEY",
+          "form": "base64",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "base64 at byte offset 0",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "Z2hwX0ExYjJDM2Q0RTVmNkc3aDhJOWowSzFsMk0zbjRPNXA2UTdyOHRhaWwtYnl0ZXM=",
+      "output": "[redacted:GH_TOKEN]HRhaWwtYnl0ZXM=",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "base64",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "base64 at byte offset 1",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "YWdocF9BMWIyQzNkNEU1ZjZHN2g4STlqMEsxbDJNM240TzVwNlE3cjh0YWlsLWJ5dGVz",
+      "output": "YW[redacted:GH_TOKEN]h0YWlsLWJ5dGVz",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "base64",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "base64 at byte offset 2",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "YWJnaHBfQTFiMkMzZDRFNWY2RzdoOEk5ajBLMWwyTTNuNE81cDZRN3I4dGFpbC1ieXRlcw==",
+      "output": "YWJ[redacted:GH_TOKEN]dGFpbC1ieXRlcw==",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "base64",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "Basic with the value as password",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "Authorization: Basic eC1hY2Nlc3MtdG9rZW46Z2hwX0ExYjJDM2Q0RTVmNkc3aDhJOWowSzFsMk0zbjRPNXA2UTdyOA==",
+      "output": "Authorization: Basic eC1hY2Nlc3MtdG9rZW46[redacted:GH_TOKEN]",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "base64",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "Basic with the value as user",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "Authorization: Basic Z2hwX0ExYjJDM2Q0RTVmNkc3aDhJOWowSzFsMk0zbjRPNXA2UTdyODp4LW9hdXRoLWJhc2lj",
+      "output": "Authorization: Basic [redacted:GH_TOKEN]Dp4LW9hdXRoLWJhc2lj",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "base64",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a JWT-like segment",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "eyJ0eXAiOiJKV1QifQ.eyJhbGciOiJub25lIiwia2V5IjoiZ2hwX0ExYjJDM2Q0RTVmNkc3aDhJOWowSzFsMk0zbjRPNXA2UTdyOCJ9.sig",
+      "output": "eyJ0eXAiOiJKV1QifQ.eyJhbGciOiJub25lIiwia2V5Ijoi[redacted:GH_TOKEN]CJ9.sig",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "base64",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "hex lower and upper",
+      "secrets": [
+        {
+          "name": "NPM_TOKEN",
+          "value": "npm_Zz9Yy8Xx7Ww6",
+          "placeholder": "fnox_proxy_000000000000000000000002"
+        }
+      ],
+      "input": "sha: 6e706d5f5a7a39597938587837577736 6E706D5F5A7A39597938587837577736",
+      "output": "sha: [redacted:NPM_TOKEN] [redacted:NPM_TOKEN]",
+      "hits": [
+        {
+          "name": "NPM_TOKEN",
+          "form": "hex",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "base64 wrapped at 20 columns",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "-----BEGIN-----\nZ2hwX0ExYjJDM2Q0RTVm\nNkc3aDhJOWowSzFsMk0z\nbjRPNXA2UTdyOA==\n-----END-----",
+      "output": "-----BEGIN-----\n[redacted:GH_TOKEN]\n-----END-----",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "wrapped",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "base64 wrapped with CRLF",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "Z2hwX0ExYjJDM2Q0\r\nRTVmNkc3aDhJOWow\r\nSzFsMk0zbjRPNXA2\r\nUTdyOA==",
+      "output": "[redacted:GH_TOKEN]",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "wrapped",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "hex wrapped at 30 columns",
+      "secrets": [
+        {
+          "name": "NPM_TOKEN",
+          "value": "npm_Zz9Yy8Xx7Ww6",
+          "placeholder": "fnox_proxy_000000000000000000000002"
+        }
+      ],
+      "input": "6e706d5f5a7a395979385878375777\n36\n",
+      "output": "[redacted:NPM_TOKEN]\n",
+      "hits": [
+        {
+          "name": "NPM_TOKEN",
+          "form": "wrapped",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "the longer value wins where two overlap",
+      "secrets": [
+        {
+          "name": "INNER",
+          "value": "abcdefgh12345678",
+          "placeholder": "fnox_proxy_000000000000000000000007"
+        },
+        {
+          "name": "OUTER",
+          "value": "abcdefgh12345678XYZ",
+          "placeholder": "fnox_proxy_000000000000000000000008"
+        }
+      ],
+      "input": "[abcdefgh12345678XYZ] [abcdefgh12345678]",
+      "output": "[fnox_proxy_000000000000000000000008] [fnox_proxy_000000000000000000000007]",
+      "hits": [
+        {
+          "name": "OUTER",
+          "form": "raw",
+          "count": 1
+        },
+        {
+          "name": "INNER",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "leftmost wins over longest",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        },
+        {
+          "name": "NPM_TOKEN",
+          "value": "npm_Zz9Yy8Xx7Ww6",
+          "placeholder": "fnox_proxy_000000000000000000000002"
+        }
+      ],
+      "input": "znpm_Zz9Yy8Xx7Ww6ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+      "output": "zfnox_proxy_000000000000000000000002fnox_proxy_000000000000000000000001",
+      "hits": [
+        {
+          "name": "NPM_TOKEN",
+          "form": "raw",
+          "count": 1
+        },
+        {
+          "name": "GH_TOKEN",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "replaced text is not rescanned",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8fnox_proxy_000000000000000000000001",
+      "output": "fnox_proxy_000000000000000000000001fnox_proxy_000000000000000000000001",
+      "hits": [
+        {
+          "name": "GH_TOKEN",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a placeholder alone is left as is",
+      "secrets": [
+        {
+          "name": "GH_TOKEN",
+          "value": "ghp_A1b2C3d4E5f6G7h8I9j0K1l2M3n4O5p6Q7r8",
+          "placeholder": "fnox_proxy_000000000000000000000001"
+        }
+      ],
+      "input": "env GH_TOKEN=fnox_proxy_000000000000000000000001",
+      "output": "env GH_TOKEN=fnox_proxy_000000000000000000000001",
+      "hits": []
+    },
+    {
+      "name": "a fragment that cuts a multi-byte character",
+      "secrets": [
+        {
+          "name": "UNI_KEY",
+          "value": "clé-secrète-ünïcode-✓",
+          "placeholder": "fnox_proxy_000000000000000000000004"
+        }
+      ],
+      "inputHex": "3ea92d73656372c3a874652dc3bc6ec3af636f643c",
+      "outputHex": "3e5b72656461637465643a554e495f4b45595d3c",
+      "hits": [
+        {
+          "name": "UNI_KEY",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}
