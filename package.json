@@ -53,7 +53,7 @@
     "@biomejs/biome": "2.5.15",
     "esbuild": "0.28.2",
     "lefthook": "2.1.17",
-    "monocart-coverage-reports": "2.13.0",
+    "monocart-coverage-reports": "2.13.1",
     "semantic-release": "25.0.9",
     "typescript": "7.0.2"
   }
