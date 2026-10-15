@@ -80,4 +80,4 @@ Unit tests stay in the gitignored `test/unit/` (`npm run test:unit`), and the pr
 
 ## Release
 
-semantic-release on `main` tags a version from the conventional commits and publishes `@ai-ecoverse/slicc-scrub` to npm with provenance, through trusted publishing, when the repository variable `NPM_PUBLISH` is `true`.
+semantic-release on `main` tags a version from the conventional commits and publishes `@ai-ecoverse/slicc-scrub` to npm with provenance, through trusted publishing, when the repository variable `NPM_PUBLISH` is `true`. The release job runs only on `main` (`github.ref == 'refs/heads/main'`), also when dispatched by hand; `test/integration/workflows.test.mjs` keeps it so.
