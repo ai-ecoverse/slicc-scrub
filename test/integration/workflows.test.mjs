@@ -50,7 +50,7 @@ test("CI picks the bench pool only for this repo's own code, and a hosted runner
     runner.steps[1].with.script,
     /\.catch\(\s*\(error\) => \(\{ runner: 'ubuntu-latest'/
   );
-  const env = { POOL: 'cloud-run-bench' };
+  const env = { POOL: 'the-pool' };
   const repo = { owner: 'ai-ecoverse', repo: 'slicc-scrub' };
   const queued = (nodes) => ({
     graphql: async () => ({ repository: { mergeQueue: { entries: { nodes } } } }),
@@ -61,7 +61,7 @@ test("CI picks the bench pool only for this repo's own code, and a hosted runner
     eventName: 'pull_request',
     payload: { pull_request: { head: { repo: { full_name: full } } } },
   });
-  assert.equal(await run(pr('ai-ecoverse/slicc-scrub')), 'cloud-run-bench');
+  assert.equal(await run(pr('ai-ecoverse/slicc-scrub')), 'the-pool');
   assert.equal(await run(pr('someone/slicc-scrub')), 'ubuntu-latest');
   assert.equal(
     await run({ eventName: 'pull_request', payload: { pull_request: { head: { repo: null } } } }),
@@ -76,9 +76,9 @@ test("CI picks the bench pool only for this repo's own code, and a hosted runner
     headCommit: { oid },
     pullRequest: { number: position, isCrossRepository },
   });
-  assert.equal(await run(group, [entry(1, 'a', false), entry(2, 'b', false)]), 'cloud-run-bench');
+  assert.equal(await run(group, [entry(1, 'a', false), entry(2, 'b', false)]), 'the-pool');
   assert.equal(await run(group, [entry(1, 'a', true), entry(2, 'b', false)]), 'ubuntu-latest');
-  assert.equal(await run(group, [entry(1, 'b', false), entry(2, 'c', true)]), 'cloud-run-bench');
+  assert.equal(await run(group, [entry(1, 'b', false), entry(2, 'c', true)]), 'the-pool');
   assert.equal(await run(group, [entry(1, 'a', false)]), 'ubuntu-latest');
   assert.equal(await run(group, []), 'ubuntu-latest');
   assert.equal(
@@ -90,7 +90,7 @@ test("CI picks the bench pool only for this repo's own code, and a hosted runner
     (await decide({ context: { repo, ...group }, github: missing, env })).runner,
     'ubuntu-latest'
   );
-  assert.equal(await run({ eventName: 'push', ref: 'refs/heads/main' }), 'cloud-run-bench');
+  assert.equal(await run({ eventName: 'push', ref: 'refs/heads/main' }), 'the-pool');
   assert.equal(await run({ eventName: 'push', ref: 'refs/heads/x' }), 'ubuntu-latest');
   const forced = await decide({
     context: { repo, eventName: 'push' },
@@ -98,6 +98,16 @@ test("CI picks the bench pool only for this repo's own code, and a hosted runner
     env: { FORCED: 'x' },
   });
   assert.equal(forced.runner, 'x');
+});
+
+test('no workflow names a self-hosted runner label: they come from vars.CERT_RUNNER and vars.CERT_LIGHT_RUNNER', async () => {
+  const names = (await readdir(dir)).filter((name) => /\.ya?ml$/.test(name));
+  for (const name of names) {
+    const text = await readFile(new URL(name, dir), 'utf8');
+    assert.doesNotMatch(text, /cloud-run-(bench|job)/, name);
+  }
+  const ci = (await workflows()).find((w) => w.name === 'ci.yml').doc;
+  assert.equal(ci.jobs.runner.steps[1].env.POOL, "${{ vars.CERT_RUNNER || 'ubuntu-latest' }}");
 });
 
 test('the release workflow can still be dispatched, but only main gets past its guard', async () => {
