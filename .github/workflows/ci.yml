@@ -45,7 +45,7 @@ jobs:
   ci:
     needs: runner
     if: ${{ !cancelled() }}
-    uses: ai-ecoverse/slicc-shared-web/.github/workflows/node-ci.yml@v1.29.7
+    uses: ai-ecoverse/slicc-shared-web/.github/workflows/node-ci.yml@v1.29.8
     with:
       node-version: '26'
       chromium: false
