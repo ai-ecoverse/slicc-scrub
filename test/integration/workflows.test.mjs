@@ -2,117 +2,75 @@ import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { load } from 'js-yaml';
-import { decide } from '../../.github/runner.mjs';
 
-const dir = new URL('../../.github/workflows/', import.meta.url);
-const RELEASING =
-  /semantic-release|npm publish|npm\s+dist-tag|gh release|git tag|git push[^\n]*--tags/;
-const MAIN = "github.ref == 'refs/heads/main'";
+const read = (path) => readFile(new URL(`../../${path}`, import.meta.url), 'utf8');
+const text = await read('.github/workflows/ci.yml');
+const ci = load(text);
+const pkg = JSON.parse(await read('package.json'));
+const version = pkg.devDependencies['@ai-ecoverse/slicc-shared-web'];
 
-async function workflows() {
-  const names = (await readdir(dir)).filter((name) => /\.ya?ml$/.test(name));
-  return Promise.all(
-    names.map(async (name) => ({
-      name,
-      doc: load(await readFile(new URL(name, dir), 'utf8')),
-    }))
+test('CI is one caller of slicc-shared-web pipeline.yml, at the devDependency version', async () => {
+  assert.deepEqual(await readdir(new URL('../../.github/', import.meta.url)), ['workflows']);
+  assert.deepEqual(await readdir(new URL('../../.github/workflows/', import.meta.url)), ['ci.yml']);
+  assert.match(version, /^2\.\d+\.\d+$/);
+  assert.deepEqual(Object.keys(ci.jobs), ['ci']);
+  assert.equal(
+    ci.jobs.ci.uses,
+    `ai-ecoverse/slicc-shared-web/.github/workflows/pipeline.yml@v${version}`
   );
-}
+  assert.equal(ci.jobs.ci.secrets, 'inherit');
+  assert.match(pkg.devDependencies['@ai-ecoverse/slicc-cdp'], /^\d+\.\d+\.\d+$/);
+});
 
-const script = (job) =>
-  (job.steps ?? []).map((step) => `${step.run ?? ''} ${step.uses ?? ''}`).join('\n');
+test('CI runs on pull requests, merge groups and pushes to main, and cancels only a superseded pull request run', () => {
+  assert.deepEqual(ci.on, { pull_request: null, merge_group: null, push: { branches: ['main'] } });
+  assert.deepEqual(ci.concurrency, {
+    group: 'ci-${{ github.ref }}',
+    'cancel-in-progress': "${{ github.event_name == 'pull_request' }}",
+  });
+  assert.deepEqual(ci.permissions, {
+    contents: 'write',
+    actions: 'read',
+    issues: 'write',
+    'pull-requests': 'write',
+    statuses: 'write',
+    'id-token': 'write',
+    attestations: 'write',
+  });
+});
 
-test('only main releases: every job that publishes, tags or releases runs on main only', async () => {
-  const seen = [];
-  for (const { name, doc } of await workflows()) {
-    for (const [id, job] of Object.entries(doc.jobs ?? {})) {
-      if (!RELEASING.test(script(job))) continue;
-      assert.equal(job.if, MAIN, `${name} ${id}`);
-      seen.push(`${name}:${id}`);
-    }
+test('the pipeline picks its runners, and nothing deploys or runs after a release', () => {
+  const inputs = ci.jobs.ci.with;
+  for (const name of ['runs-on', 'after-release', 'release-environment', 'deploy', 'test']) {
+    assert.equal(inputs[name], undefined, name);
   }
-  assert.deepEqual(seen, ['release.yml:release']);
+  assert.doesNotMatch(text, /vars\.|runs-on|workflow_dispatch|schedule:|workflow_run/);
 });
 
-test("CI picks the bench pool only for this repo's own code, and a hosted runner for forks", async () => {
-  const ci = (await workflows()).find((w) => w.name === 'ci.yml').doc;
-  const { runner, ci: job } = ci.jobs;
-  assert.match(
-    runner['runs-on'],
-    /^\$\{\{ github\.event_name == 'pull_request' && github\.event\.pull_request\.head\.repo\.full_name != github\.repository && 'ubuntu-latest' \|\| vars\.CERT_LIGHT_RUNNER/
-  );
-  assert.equal(runner.steps[0].with['sparse-checkout'], '.github/runner.mjs');
-  assert.match(runner.steps[1].with.script, /\/\.github\/runner\.mjs/);
-  assert.equal(job.needs, 'runner');
-  assert.equal(job.with['runs-on'], "${{ needs.runner.outputs.runner || 'ubuntu-latest' }}");
-  assert.equal(job.if, '${{ !cancelled() }}');
-  assert.match(
-    runner.steps[1].with.script,
-    /\.catch\(\s*\(error\) => \(\{ runner: 'ubuntu-latest'/
-  );
-  const env = { POOL: 'the-pool' };
-  const repo = { owner: 'ai-ecoverse', repo: 'slicc-scrub' };
-  const queued = (nodes) => ({
-    graphql: async () => ({ repository: { mergeQueue: { entries: { nodes } } } }),
-  });
-  const run = async (context, nodes = []) =>
-    (await decide({ context: { repo, ...context }, github: queued(nodes), env })).runner;
-  const pr = (full) => ({
-    eventName: 'pull_request',
-    payload: { pull_request: { head: { repo: { full_name: full } } } },
-  });
-  assert.equal(await run(pr('ai-ecoverse/slicc-scrub')), 'the-pool');
-  assert.equal(await run(pr('someone/slicc-scrub')), 'ubuntu-latest');
-  assert.equal(
-    await run({ eventName: 'pull_request', payload: { pull_request: { head: { repo: null } } } }),
-    'ubuntu-latest'
-  );
-  const group = {
-    eventName: 'merge_group',
-    payload: { merge_group: { base_ref: 'refs/heads/main', head_sha: 'b' } },
-  };
-  const entry = (position, oid, isCrossRepository) => ({
-    position,
-    headCommit: { oid },
-    pullRequest: { number: position, isCrossRepository },
-  });
-  assert.equal(await run(group, [entry(1, 'a', false), entry(2, 'b', false)]), 'the-pool');
-  assert.equal(await run(group, [entry(1, 'a', true), entry(2, 'b', false)]), 'ubuntu-latest');
-  assert.equal(await run(group, [entry(1, 'b', false), entry(2, 'c', true)]), 'the-pool');
-  assert.equal(await run(group, [entry(1, 'a', false)]), 'ubuntu-latest');
-  assert.equal(await run(group, []), 'ubuntu-latest');
-  assert.equal(
-    await run(group, [{ position: 1, headCommit: { oid: 'b' }, pullRequest: null }]),
-    'ubuntu-latest'
-  );
-  const missing = { graphql: async () => ({ repository: { mergeQueue: null } }) };
-  assert.equal(
-    (await decide({ context: { repo, ...group }, github: missing, env })).runner,
-    'ubuntu-latest'
-  );
-  assert.equal(await run({ eventName: 'push', ref: 'refs/heads/main' }), 'the-pool');
-  assert.equal(await run({ eventName: 'push', ref: 'refs/heads/x' }), 'ubuntu-latest');
-  const forced = await decide({
-    context: { repo, eventName: 'push' },
-    github: missing,
-    env: { FORCED: 'x' },
-  });
-  assert.equal(forced.runner, 'x');
+test('the shard runs exactly the files npm test runs, on Node 26', () => {
+  const inputs = ci.jobs.ci.with;
+  assert.equal(inputs['test-glob'], 'test/integration/*.test.mjs');
+  assert.ok(pkg.scripts.test.endsWith(` '${inputs['test-glob']}'`), pkg.scripts.test);
+  assert.doesNotMatch(pkg.scripts.test, /NODE_OPTIONS/);
+  assert.equal(inputs['node-version'], '26');
+  assert.equal(inputs.shards, 1);
 });
 
-test('no workflow names a self-hosted runner label: they come from vars.CERT_RUNNER and vars.CERT_LIGHT_RUNNER', async () => {
-  const names = (await readdir(dir)).filter((name) => /\.ya?ml$/.test(name));
-  for (const name of names) {
-    const text = await readFile(new URL(name, dir), 'utf8');
-    assert.doesNotMatch(text, /cloud-run-(bench|job)/, name);
-  }
-  const ci = (await workflows()).find((w) => w.name === 'ci.yml').doc;
-  assert.equal(ci.jobs.runner.steps[1].env.POOL, "${{ vars.CERT_RUNNER || 'ubuntu-latest' }}");
+test('semantic-release publishes to npm from main, from the trusted ci.yml, with provenance', async () => {
+  assert.equal(pkg.fledgling.workflow, 'ci.yml');
+  assert.equal(pkg.fledgling.repo, 'ai-ecoverse/slicc-scrub');
+  assert.equal(pkg.publishConfig.provenance, true);
+  const { default: release } = await import('../../release.config.mjs');
+  assert.deepEqual(release.branches, ['main']);
+  assert.ok(release.plugins.includes('@semantic-release/npm'));
+  assert.doesNotMatch(JSON.stringify(release), /npmPublish/);
 });
 
-test('the release workflow can still be dispatched, but only main gets past its guard', async () => {
-  const release = (await workflows()).find((w) => w.name === 'release.yml').doc;
-  assert.ok('workflow_dispatch' in release.on);
-  assert.deepEqual(release.on.push, { branches: ['main'] });
-  assert.equal(release.jobs.release.if, MAIN);
+test('the hooks fail closed and are installed per worktree', async () => {
+  assert.equal(pkg.scripts.prepare, 'slicc-install-hooks');
+  const hooks = load(await read('lefthook.yml'));
+  assert.equal(hooks.assert_lefthook_installed, true);
+  assert.deepEqual(hooks.extends, ['node_modules/@ai-ecoverse/slicc-shared-web/lefthook.yml']);
+  assert.equal(hooks['pre-commit'].jobs[0].name, 'shared hooks');
+  assert.match(await read('.githooks/pre-commit'), /node_modules\/\.git-hooks\//);
 });
