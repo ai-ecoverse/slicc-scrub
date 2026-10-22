@@ -72,7 +72,7 @@ A consumer's test runs, for every case:
 npm install
 npm run build    # dist/index.js and dist/types
 npm run lint
-npm test         # the vectors at every split point, the API, and a fuzz test
+npm test         # vectors.json is fresh, the vectors at every split point, the API, a fuzz test, and CI
 npm run vectors  # rewrite vectors.json
 ```
 
@@ -80,4 +80,4 @@ Unit tests stay in the gitignored `test/unit/` (`npm run test:unit`), and the pr
 
 ## Release
 
-semantic-release on `main` tags a version from the conventional commits and publishes `@ai-ecoverse/slicc-scrub` to npm with provenance, through trusted publishing, when the repository variable `NPM_PUBLISH` is `true`. The release job runs only on `main` (`github.ref == 'refs/heads/main'`), also when dispatched by hand; `test/integration/workflows.test.mjs` keeps it so. CI's `runner` job (`.github/runner.mjs`, slicc-kernel's decider; itself on a hosted runner for a fork's pull request) runs `ci / test` on the self-hosted runner `vars.CERT_RUNNER` names (`ubuntu-latest` if it's unset; no workflow names a self-hosted label itself) for this repo's own pull requests and pushes to `main`, and on a hosted runner for a fork's pull request (also when the decider fails); `vars.CI_RUNNER` overrides it. A fork that edits this workflow could still name the pool itself: that is held off by the pool's own runner-group settings, not by this file. The release stays on a hosted runner.
+`.github/workflows/ci.yml` is the only workflow: one caller of [slicc-shared-web's pipeline](https://github.com/ai-ecoverse/slicc-shared-web#pipeline), at the same version as the `@ai-ecoverse/slicc-shared-web` devDependency. A pull request gets lint, `npm test` (`test/integration/*.test.mjs`, on one shard, as `ci / integration`) and the Claude and Codex reviews (`ci / review`). A push to `main` runs semantic-release, which tags a version from the conventional commits and publishes `@ai-ecoverse/slicc-scrub` to npm with provenance, through trusted publishing from `ci.yml`. There is no other way to release. `test/integration/workflows.test.mjs` keeps it so.

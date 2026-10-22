@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { compile } from '../../dist/index.js';
 
 const vectors = JSON.parse(readFileSync(new URL('../../vectors.json', import.meta.url), 'utf8'));
@@ -17,6 +21,24 @@ function concat(parts) {
 function sorted(hits) {
   return [...hits].sort((a, b) => `${a.name}${a.form}`.localeCompare(`${b.name}${b.form}`));
 }
+
+test('vectors.json is exactly what npm run vectors writes', () => {
+  const root = mkdtempSync(join(tmpdir(), 'scrub-vectors-'));
+  try {
+    mkdirSync(join(root, 'scripts'));
+    copyFileSync(
+      fileURLToPath(new URL('../../scripts/vectors.mjs', import.meta.url)),
+      join(root, 'scripts/vectors.mjs')
+    );
+    execFileSync(process.execPath, [join(root, 'scripts/vectors.mjs')]);
+    assert.equal(
+      readFileSync(join(root, 'vectors.json'), 'utf8'),
+      readFileSync(new URL('../../vectors.json', import.meta.url), 'utf8')
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test('the vectors declare their thresholds', () => {
   assert.equal(vectors.format, 1);
