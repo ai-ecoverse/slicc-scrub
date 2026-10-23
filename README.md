@@ -17,7 +17,7 @@ scrubber.text('token: ghp_…');
 
 | | |
 |---|---|
-| `compile(secrets, options?) → Scrubber` | `secrets` is `{ name, value, placeholder }[]`. A value shorter than 8 bytes of UTF-8 throws a `RangeError`: it can't be told apart from ordinary output. `options` are `idleMs` (default 250) and `version` (default 0), both only echoed back |
+| `compile(secrets, options?) → Scrubber` | `secrets` is `{ name, value, placeholder }[]`. A value shorter than 8 bytes of UTF-8 throws a `RangeError`: it can't be told apart from ordinary output. `options` are `idleMs` (default 250) and `version` (default 0), both only echoed back, and `sameLength` (default `false`, below) |
 | `scrubber.text(string) → { text, hits }` | scrubs UTF-8 text. A fragment match can cut a multi-byte character; its remains decode as U+FFFD |
 | `scrubber.bytes(Uint8Array) → { bytes, hits }` | scrubs bytes |
 | `scrubber.stream() → Stream` | scrubs a stream, below |
@@ -46,6 +46,7 @@ Each value *v* is matched, as UTF-8 bytes, in these forms. A form is added only 
 - **One Aho–Corasick automaton** over every pattern, on bytes. Fragments are found from their 16-byte windows and extended byte by byte along the value. A second automaton over the `base64` and `hex` patterns runs on a view of the input with CR and LF removed, mapped back to the original bytes.
 - **Leftmost, then longest:** at each point the match that starts first wins, and among those the longest. Ties go to `raw`, then `fragment`, `json`, `percent`, `html`, `base64`, `hex`, then the earlier secret. Matches never overlap, and replaced text is never scanned again.
 - **Replacements:** a `raw` match (a fragment covering the whole value is one) becomes the secret's `placeholder`; anything else becomes `[redacted:<name>]`.
+- **`sameLength: true`** replaces every match, in every form, with exactly as many bytes as it matched: each byte becomes `*` (0x2A), except CR and LF, which stay where they are. The filler is that one fixed byte, nothing taken from the value, the placeholder or the name, so the output has the input's length and line breaks, and length-prefixed framing around a match (an HTTP `Content-Length`, a chunk size, a WebSocket frame) still holds. Matching, the forms, `hits` and streaming are the same as without it; only the replacement differs.
 - Matching is case-sensitive; hex is matched in lower and upper case.
 
 ## Streaming

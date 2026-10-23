@@ -93,3 +93,52 @@ test('random inputs never keep a value, and every chunking agrees', () => {
     );
   }
 });
+
+test('with sameLength, random inputs keep their length, their line breaks and every byte outside a match, keep no value, and every chunking agrees', () => {
+  for (let round = 0; round < 150; round++) {
+    const secrets = Array.from({ length: 1 + Math.floor(random() * 3) }, (_, i) => ({
+      name: `S${i}`,
+      value: value(),
+      placeholder: `fnox_proxy_${String(round * 10 + i).padStart(24, '0')}`,
+    }));
+    const plain = compile(secrets);
+    const scrubber = compile(secrets, { sameLength: true });
+    let input = '';
+    for (let piece = 0; piece < 6; piece++) {
+      input += word(0, 20);
+      if (random() < 0.6) input += pick(encodings)(pick(secrets).value);
+    }
+    const bytes = new TextEncoder().encode(input);
+    const whole = scrubber.bytes(bytes);
+    const output = Buffer.from(whole.bytes);
+    assert.equal(output.length, bytes.length, `round ${round}: the length changed`);
+    assert.deepEqual(whole.hits, plain.bytes(bytes).hits, `round ${round}: other hits`);
+    for (let i = 0; i < bytes.length; i++) {
+      if (output[i] !== bytes[i]) assert.equal(output[i], 0x2a, `round ${round}: byte ${i}`);
+      if (bytes[i] === 10 || bytes[i] === 13) assert.equal(output[i], bytes[i]);
+    }
+    const flat = Buffer.from(output.filter((byte) => byte !== 10 && byte !== 13));
+    for (const secret of secrets) {
+      assert.ok(!output.includes(Buffer.from(secret.value)), `round ${round}: the value survived`);
+      for (const form of forms(secret.value)) {
+        assert.ok(!output.includes(form), `round ${round}: ${form} survived`);
+        if (/^[0-9A-Za-z+/=_-]+$/.test(form.toString())) {
+          assert.ok(!flat.includes(form), `round ${round}: wrapped ${form} survived`);
+        }
+      }
+    }
+    const stream = scrubber.stream();
+    const parts = [];
+    for (let at = 0; at < bytes.length; ) {
+      const size = 1 + Math.floor(random() * 9);
+      parts.push(stream.push(bytes.subarray(at, at + size)));
+      at += size;
+    }
+    parts.push(stream.end());
+    assert.deepEqual(
+      Buffer.concat(parts.map((part) => Buffer.from(part))),
+      output,
+      `round ${round}`
+    );
+  }
+});
