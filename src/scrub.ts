@@ -16,6 +16,7 @@ export interface Hit {
 export interface Options {
   idleMs?: number;
   version?: number;
+  sameLength?: boolean;
 }
 
 export interface Stream {
@@ -51,6 +52,7 @@ interface Compiled {
   sources: Source[][];
   wrapSources: Source[][];
   replacements: Uint8Array[][];
+  sameLength: boolean;
 }
 
 const RANK: Record<Form, number> = {
@@ -66,6 +68,7 @@ const RANK: Record<Form, number> = {
 const CR = 13;
 const LF = 10;
 const EMPTY = new Uint8Array(0);
+const FILLER = 0x2a;
 
 function register(
   automaton: Automaton,
@@ -84,7 +87,7 @@ function register(
   sources[id].push(source);
 }
 
-function prepare(secrets: Secret[]): Compiled {
+function prepare(secrets: Secret[], sameLength: boolean): Compiled {
   const main = new Automaton();
   const wrap = new Automaton();
   const sources: Source[][] = [];
@@ -108,7 +111,21 @@ function prepare(secrets: Secret[]): Compiled {
     utf8(secret.placeholder),
     utf8(`[redacted:${secret.name}]`),
   ]);
-  return { secrets, values, main, wrap, sources, wrapSources, replacements };
+  return { secrets, values, main, wrap, sources, wrapSources, replacements, sameLength };
+}
+
+function filled(input: Uint8Array, start: number, end: number): Uint8Array {
+  const out = new Uint8Array(end - start);
+  for (let i = start; i < end; i++) {
+    const byte = input[i];
+    out[i - start] = byte === CR || byte === LF ? byte : FILLER;
+  }
+  return out;
+}
+
+function replacement(c: Compiled, input: Uint8Array, candidate: Candidate): Uint8Array {
+  if (c.sameLength) return filled(input, candidate.start, candidate.end);
+  return c.replacements[candidate.secret][candidate.form === 'raw' ? 0 : 1];
 }
 
 function better(a: Candidate, b: Candidate | undefined): boolean {
@@ -247,10 +264,7 @@ function pass(c: Compiled, input: Uint8Array, final: boolean): Pass {
       break;
     }
     const candidate = best.get(next) as Candidate;
-    parts.push(
-      input.subarray(pos, next),
-      c.replacements[candidate.secret][candidate.form === 'raw' ? 0 : 1]
-    );
+    parts.push(input.subarray(pos, next), replacement(c, input, candidate));
     count(c, hits, candidate);
     pos = candidate.end;
   }
@@ -267,7 +281,10 @@ function merge(into: Map<string, Hit>, from: Map<string, Hit>): void {
 }
 
 export function compile(secrets: Secret[], options: Options = {}): Scrubber {
-  const c = prepare(secrets.map((secret) => ({ ...secret })));
+  const c = prepare(
+    secrets.map((secret) => ({ ...secret })),
+    options.sameLength === true
+  );
   const decoder = new TextDecoder();
   const idleMs = options.idleMs ?? 250;
   const scrubBytes = (input: Uint8Array) => {

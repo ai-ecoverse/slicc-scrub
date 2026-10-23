@@ -69,3 +69,34 @@ test('the compiled scrubber keeps its own copy of the secrets', () => {
   const stream = scrubber.stream();
   assert.equal(decode(stream.push(encode(`${TOKEN.value} `))), `${TOKEN.placeholder} `);
 });
+
+test('sameLength replaces every form with as many filler bytes as it matched, keeps CR and LF, and is off by default', () => {
+  const value = TOKEN.value;
+  const b64 = Buffer.from(value).toString('base64');
+  const hex = Buffer.from(value).toString('hex');
+  const pct = encodeURIComponent('other secret é 42');
+  const wrapped = b64.replace(/(.{10})/g, '$1\r\n');
+  const secrets = [
+    TOKEN,
+    {
+      name: 'SPACE',
+      value: 'other secret é 42',
+      placeholder: 'fnox_proxy_000000000000000000000002',
+    },
+  ];
+  const input = `a ${value} b ${b64} c ${hex} d ${pct} e ${wrapped} f`;
+  const same = compile(secrets, { sameLength: true });
+  const out = same.text(input).text;
+  const stars = (n) => '*'.repeat(n);
+  assert.equal(
+    out,
+    `a ${stars(value.length)} b ${stars(b64.length)} c ${stars(hex.length)} d ${stars(pct.length)} e ${wrapped.replace(/[^\r\n]/g, '*')} f`
+  );
+  assert.equal(encode(out).length, encode(input).length);
+  assert.deepEqual(same.hits ?? [], []);
+  assert.equal(compile(secrets).text(`a ${value}`).text, `a ${TOKEN.placeholder}`);
+  assert.equal(
+    compile(secrets, { sameLength: false }).text(`a ${value}`).text,
+    `a ${TOKEN.placeholder}`
+  );
+});
