@@ -50,7 +50,7 @@
   },
   "devDependencies": {
     "@ai-ecoverse/slicc-cdp": "1.42.5",
-    "@ai-ecoverse/slicc-shared-web": "2.13.6",
+    "@ai-ecoverse/slicc-shared-web": "2.13.7",
     "@biomejs/biome": "2.6.2",
     "esbuild": "0.28.2",
     "js-yaml": "5.5.0",
