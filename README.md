@@ -33,7 +33,7 @@ Each value *v* is matched, as UTF-8 bytes, in these forms. A form is added only 
 | form | what is matched |
 |---|---|
 | `raw` | *v* itself |
-| `fragment` | any run of 16 bytes or more of *v*. Values shorter than 16 bytes have none |
+| `fragment` | any run of 16 bytes or more of *v*. Values shorter than 16 bytes have none, and a JSON document has its own (below) |
 | `json` | the inside of `JSON.stringify(v)`; the same with `/` as `\/`; and with every control and non-ASCII UTF-16 unit as `\uXXXX`, in lower and in upper hex |
 | `percent` | `encodeURIComponent(v)`; the same with lower-case hex; with `%20` as `+`; and form encoding (everything but `A–Z a–z 0–9 * - . _` escaped, space as `+`) |
 | `html` | `&` `<` `>` `"` as `&amp;` `&lt;` `&gt;` `&quot;`, and `'` as `&#39;` or `&#x27;` |
@@ -41,11 +41,21 @@ Each value *v* is matched, as UTF-8 bytes, in these forms. A form is added only 
 | `hex` | lower and upper, contiguous |
 | `wrapped` | the `base64` and `hex` forms with CR and LF anywhere inside them (`base64 -w 76`, PEM, `xxd -p`) |
 
+## JSON documents
+
+A value that `JSON.parse` reads as an object or an array (a service-account key, an OAuth client file) is mostly public: its syntax, its field names, and strings such as URLs, e-mail addresses, ids and PEM armor, which the conversation around it holds too. So its fragments aren't runs of its text:
+
+- Its `raw` form is the whole value, at any length; its other forms are as above.
+- A **key-like run** is a maximal run of `A–Z a–z 0–9 + / = _ -`, at least 16 bytes long, in a string of the document (decoded, at any depth; field names aren't strings here), that holds a digit and a letter, and either an upper-case and a lower-case letter or only hex digits.
+- A **fragment** is any run of 16 bytes or more of a key-like run: a cut PEM line, API key or hex secret is still found, and none of the boilerplate around it.
+- A string without a key-like run (a project id, an e-mail address, a URL, a client id of digits, a password of words) has no fragments; it's found only within the whole value.
+- A fragment never covers the whole value, so it's always replaced by `[redacted:<name>]`, and it never holds `"`, `\` or a line break, so it never takes the quote or the backslash of a JSON escape around it.
+
 ## Matching
 
-- **One Aho–Corasick automaton** over every pattern, on bytes. Fragments are found from their 16-byte windows and extended byte by byte along the value. A second automaton over the `base64` and `hex` patterns runs on a view of the input with CR and LF removed, mapped back to the original bytes.
+- **One Aho–Corasick automaton** over every pattern, on bytes. Fragments are found from their 16-byte windows and extended byte by byte along the value (in a JSON document, along its key-like run). A second automaton over the `base64` and `hex` patterns runs on a view of the input with CR and LF removed, mapped back to the original bytes.
 - **Leftmost, then longest:** at each point the match that starts first wins, and among those the longest. Ties go to `raw`, then `fragment`, `json`, `percent`, `html`, `base64`, `hex`, then the earlier secret. Matches never overlap, and replaced text is never scanned again.
-- **Replacements:** a `raw` match (a fragment covering the whole value is one) becomes the secret's `placeholder`; anything else becomes `[redacted:<name>]`.
+- **Replacements:** a `raw` match (a fragment covering the whole value is one, never in a JSON document) becomes the secret's `placeholder`; anything else becomes `[redacted:<name>]`.
 - **`sameLength: true`** replaces every match, in every form, with exactly as many bytes as it matched: each byte becomes `*` (0x2A), except CR and LF, which stay where they are. The filler is that one fixed byte, nothing taken from the value, the placeholder or the name, so the output has the input's length and line breaks, and length-prefixed framing around a match (an HTTP `Content-Length`, a chunk size, a WebSocket frame) still holds. Matching, the forms, `hits` and streaming are the same as without it; only the replacement differs.
 - Matching is case-sensitive; hex is matched in lower and upper case.
 

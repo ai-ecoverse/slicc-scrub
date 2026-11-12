@@ -8,12 +8,19 @@ export interface Source {
   secret: number;
   form: Form;
   offset?: number;
+  piece?: number;
 }
 
 export interface Shape {
   bytes: Uint8Array;
   form: Form;
   offset?: number;
+  piece?: number;
+}
+
+export interface Fragments {
+  pieces: Uint8Array[];
+  whole: boolean;
 }
 
 const encoder = new TextEncoder();
@@ -108,14 +115,64 @@ function encodings(bytes: Uint8Array): string[] {
   return [...standard, ...standard.map(urlSafe)];
 }
 
-export function shapes(value: string): Shape[] {
+function windows(length: number): number[] {
+  const out: number[] = [];
+  for (let offset = 0; offset + FRAGMENT <= length; offset++) out.push(offset);
+  return out;
+}
+
+function strings(document: object): string[] {
+  const out: string[] = [];
+  const stack: unknown[] = [document];
+  while (stack.length > 0) {
+    const item = stack.pop();
+    if (typeof item === 'string') out.push(item);
+    if (typeof item !== 'object' || item === null) continue;
+    for (const child of Object.values(item)) stack.push(child);
+  }
+  return out;
+}
+
+function keyLike(run: string): boolean {
+  if (!/[0-9]/.test(run) || !/[A-Za-z]/.test(run)) return false;
+  return (/[A-Z]/.test(run) && /[a-z]/.test(run)) || /^[0-9A-Fa-f]+$/.test(run);
+}
+
+function runs(leaf: string): string[] {
+  return [...leaf.matchAll(/[A-Za-z0-9+/=_-]{16,}/g)].map((run) => run[0]).filter(keyLike);
+}
+
+function parsed(value: string): object | null {
+  try {
+    const document: unknown = JSON.parse(value);
+    return typeof document === 'object' && document !== null ? document : null;
+  } catch {
+    return null;
+  }
+}
+
+export function fragments(value: string): Fragments {
+  const raw = utf8(value);
+  const document = parsed(value);
+  if (!document) return { pieces: [raw], whole: true };
+  return { pieces: [...new Set(strings(document).flatMap(runs))].map(utf8), whole: false };
+}
+
+export function shapes(value: string, split: Fragments = fragments(value)): Shape[] {
   const raw = utf8(value);
   const seen = new Set<string>([value]);
   const out: Shape[] = [];
-  if (raw.length < FRAGMENT) out.push({ bytes: raw, form: 'raw' });
-  for (let offset = 0; raw.length >= FRAGMENT && offset + FRAGMENT <= raw.length; offset++) {
-    out.push({ bytes: raw.subarray(offset, offset + FRAGMENT), form: 'fragment', offset });
-  }
+  if (raw.length < FRAGMENT || !split.whole) out.push({ bytes: raw, form: 'raw' });
+  split.pieces.forEach((bytes, piece) => {
+    for (const offset of windows(bytes.length)) {
+      out.push({
+        bytes: bytes.subarray(offset, offset + FRAGMENT),
+        form: 'fragment',
+        offset,
+        piece,
+      });
+    }
+  });
   const add = (text: string, form: Form) => {
     if (seen.has(text)) return;
     seen.add(text);

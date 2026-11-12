@@ -1,5 +1,15 @@
 import { Automaton } from './automaton.ts';
-import { type Form, FRAGMENT, MIN_VALUE, type Source, shapes, utf8, wrappable } from './forms.ts';
+import {
+  type Form,
+  FRAGMENT,
+  type Fragments,
+  fragments,
+  MIN_VALUE,
+  type Source,
+  shapes,
+  utf8,
+  wrappable,
+} from './forms.ts';
 
 export interface Secret {
   name: string;
@@ -46,7 +56,7 @@ interface Candidate {
 
 interface Compiled {
   secrets: Secret[];
-  values: Uint8Array[];
+  splits: Fragments[];
   main: Automaton;
   wrap: Automaton;
   sources: Source[][];
@@ -95,12 +105,19 @@ function prepare(secrets: Secret[], sameLength: boolean): Compiled {
   const ids = new Map<string, number>();
   const wrapIds = new Map<string, number>();
   const values = secrets.map((secret) => utf8(secret.value));
+  const splits: Fragments[] = [];
   secrets.forEach((secret, index) => {
     if (typeof secret.value !== 'string' || values[index].length < MIN_VALUE) {
       throw new RangeError(`the value of ${secret.name} is shorter than ${MIN_VALUE} bytes`);
     }
-    for (const shape of shapes(secret.value)) {
-      const source: Source = { secret: index, form: shape.form, offset: shape.offset };
+    splits.push(fragments(secret.value));
+    for (const shape of shapes(secret.value, splits[index])) {
+      const source: Source = {
+        secret: index,
+        form: shape.form,
+        offset: shape.offset,
+        piece: shape.piece,
+      };
       register(main, sources, ids, shape.bytes, source);
       if (wrappable(shape.form)) register(wrap, wrapSources, wrapIds, shape.bytes, source);
     }
@@ -111,7 +128,16 @@ function prepare(secrets: Secret[], sameLength: boolean): Compiled {
     utf8(secret.placeholder),
     utf8(`[redacted:${secret.name}]`),
   ]);
-  return { secrets, values, main, wrap, sources, wrapSources, replacements, sameLength };
+  return {
+    secrets,
+    splits,
+    main,
+    wrap,
+    sources,
+    wrapSources,
+    replacements,
+    sameLength,
+  };
 }
 
 function filled(input: Uint8Array, start: number, end: number): Uint8Array {
@@ -152,14 +178,16 @@ function resolve(
       growing: false,
     };
   }
-  const value = c.values[source.secret];
+  const split = c.splits[source.secret];
+  const value = split.pieces[source.piece as number];
   let stop = end;
   let at = (source.offset as number) + FRAGMENT;
   while (stop < input.length && at < value.length && input[stop] === value[at]) {
     stop++;
     at++;
   }
-  const form: Form = source.offset === 0 && at === value.length ? 'raw' : 'fragment';
+  const whole = split.whole && source.offset === 0 && at === value.length;
+  const form: Form = whole ? 'raw' : 'fragment';
   const growing = stop === input.length && at < value.length;
   return { start, end: stop, secret: source.secret, form, rank: RANK[form], growing };
 }

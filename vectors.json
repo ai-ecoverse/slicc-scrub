@@ -669,6 +669,151 @@
       ]
     },
     {
+      "name": "a JSON document: its public strings and syntax are left alone",
+      "secrets": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "value": "{\"type\":\"example_account\",\"project_id\":\"helix-225321\",\"key_id\":\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\",\"pem\":\"-----BEGIN EXAMPLE KEY-----\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\n-----END EXAMPLE KEY-----\\n\",\"client_email\":\"x@helix-225321.iam.gserviceaccount.com\",\"client_id\":\"118000000000000000001\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}",
+          "placeholder": "fnox_proxy_000000000000000000000009"
+        }
+      ],
+      "input": "{\"messages\":[{\"role\":\"user\",\"content\":[{\"text\":\"see https://accounts.google.com/o/oauth2/auth, https://oauth2.googleapis.com/token and x@helix-225321.iam.gserviceaccount.com\"}]},{\"role\":\"assistant\",\"content\":[{\"toolUse\":{\"toolUseId\":\"t1\",\"name\":\"bash\",\"input\":{\"command\":\"const k = \\\"-----BEGIN EXAMPLE KEY-----\\\\n\\\" + b; fetch(\\\"https://accounts.google.com/o/oauth2/auth\\\"); // x@helix-225321.iam.gserviceaccount.com\"}}}]},{\"role\":\"user\",\"content\":[{\"text\":\"example_account helix-225321 118000000000000000001 https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\"}]}]}",
+      "output": "{\"messages\":[{\"role\":\"user\",\"content\":[{\"text\":\"see https://accounts.google.com/o/oauth2/auth, https://oauth2.googleapis.com/token and x@helix-225321.iam.gserviceaccount.com\"}]},{\"role\":\"assistant\",\"content\":[{\"toolUse\":{\"toolUseId\":\"t1\",\"name\":\"bash\",\"input\":{\"command\":\"const k = \\\"-----BEGIN EXAMPLE KEY-----\\\\n\\\" + b; fetch(\\\"https://accounts.google.com/o/oauth2/auth\\\"); // x@helix-225321.iam.gserviceaccount.com\"}}}]},{\"role\":\"user\",\"content\":[{\"text\":\"example_account helix-225321 118000000000000000001 https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\"}]}]}",
+      "hits": []
+    },
+    {
+      "name": "a JSON document: a cut key line is a fragment",
+      "secrets": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "value": "{\"type\":\"example_account\",\"project_id\":\"helix-225321\",\"key_id\":\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\",\"pem\":\"-----BEGIN EXAMPLE KEY-----\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\n-----END EXAMPLE KEY-----\\n\",\"client_email\":\"x@helix-225321.iam.gserviceaccount.com\",\"client_id\":\"118000000000000000001\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}",
+          "placeholder": "fnox_proxy_000000000000000000000009"
+        }
+      ],
+      "input": "head -c: 2SJrtP1Gj9gharP8RY7XIGmy+0SN1h\n",
+      "output": "head -c: [redacted:GCLOUD_CREDENTIALS]\n",
+      "hits": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a JSON document: a hex secret in it, cut, is a fragment",
+      "secrets": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "value": "{\"type\":\"example_account\",\"project_id\":\"helix-225321\",\"key_id\":\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\",\"pem\":\"-----BEGIN EXAMPLE KEY-----\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\n-----END EXAMPLE KEY-----\\n\",\"client_email\":\"x@helix-225321.iam.gserviceaccount.com\",\"client_id\":\"118000000000000000001\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}",
+          "placeholder": "fnox_proxy_000000000000000000000009"
+        }
+      ],
+      "input": "id 9c1e7b4d6f8a0c2e4b6d.",
+      "output": "id [redacted:GCLOUD_CREDENTIALS].",
+      "hits": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a JSON document: its PEM as a file keeps only its armor",
+      "secrets": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "value": "{\"type\":\"example_account\",\"project_id\":\"helix-225321\",\"key_id\":\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\",\"pem\":\"-----BEGIN EXAMPLE KEY-----\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\n-----END EXAMPLE KEY-----\\n\",\"client_email\":\"x@helix-225321.iam.gserviceaccount.com\",\"client_id\":\"118000000000000000001\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}",
+          "placeholder": "fnox_proxy_000000000000000000000009"
+        }
+      ],
+      "input": "-----BEGIN EXAMPLE KEY-----\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\n-----END EXAMPLE KEY-----\n",
+      "output": "-----BEGIN EXAMPLE KEY-----\n[redacted:GCLOUD_CREDENTIALS]\n[redacted:GCLOUD_CREDENTIALS]\n[redacted:GCLOUD_CREDENTIALS]\n-----END EXAMPLE KEY-----\n",
+      "hits": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "form": "fragment",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "name": "a JSON document: a key line between \\\" and \\\\ in a JSON body keeps the escapes",
+      "secrets": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "value": "{\"type\":\"example_account\",\"project_id\":\"helix-225321\",\"key_id\":\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\",\"pem\":\"-----BEGIN EXAMPLE KEY-----\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\n-----END EXAMPLE KEY-----\\n\",\"client_email\":\"x@helix-225321.iam.gserviceaccount.com\",\"client_id\":\"118000000000000000001\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}",
+          "placeholder": "fnox_proxy_000000000000000000000009"
+        }
+      ],
+      "input": "{\"command\":\"echo \\\"KXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\\\n\\\"2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\\\\\\" > k\"}",
+      "output": "{\"command\":\"echo \\\"[redacted:GCLOUD_CREDENTIALS]\\\\n\\\"[redacted:GCLOUD_CREDENTIALS]\\\\\\\" > k\"}",
+      "hits": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "form": "fragment",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "a JSON document: the whole value, raw and JSON-escaped",
+      "secrets": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "value": "{\"type\":\"example_account\",\"project_id\":\"helix-225321\",\"key_id\":\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\",\"pem\":\"-----BEGIN EXAMPLE KEY-----\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\n-----END EXAMPLE KEY-----\\n\",\"client_email\":\"x@helix-225321.iam.gserviceaccount.com\",\"client_id\":\"118000000000000000001\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"}",
+          "placeholder": "fnox_proxy_000000000000000000000009"
+        }
+      ],
+      "input": "{\"type\":\"example_account\",\"project_id\":\"helix-225321\",\"key_id\":\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\",\"pem\":\"-----BEGIN EXAMPLE KEY-----\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\n-----END EXAMPLE KEY-----\\n\",\"client_email\":\"x@helix-225321.iam.gserviceaccount.com\",\"client_id\":\"118000000000000000001\",\"auth_uri\":\"https://accounts.google.com/o/oauth2/auth\",\"token_uri\":\"https://oauth2.googleapis.com/token\",\"auth_provider_x509_cert_url\":\"https://www.googleapis.com/oauth2/v1/certs\",\"client_x509_cert_url\":\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\",\"universe_domain\":\"googleapis.com\"} {\"v\":\"{\\\"type\\\":\\\"example_account\\\",\\\"project_id\\\":\\\"helix-225321\\\",\\\"key_id\\\":\\\"3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a\\\",\\\"pem\\\":\\\"-----BEGIN EXAMPLE KEY-----\\\\nKXK7BE2W3yhxugNMld4ncLkCS5TdJm+4AUqT3CVutwBJktskbbb/SJHaI2y1/keQ\\\\n2SJrtP1Gj9gharP8RY7XIGmy+0SN1h9osfpDjNUeZ7D5QovUHWav+EGK0xxlrvdA\\\\nidIbZK32P4jRGmOs9T6H0Bliq/Q9hs8YYarzPIXOF2Cp8juEzRZfqPE6g8wVXqfw\\\\n-----END EXAMPLE KEY-----\\\\n\\\",\\\"client_email\\\":\\\"x@helix-225321.iam.gserviceaccount.com\\\",\\\"client_id\\\":\\\"118000000000000000001\\\",\\\"auth_uri\\\":\\\"https://accounts.google.com/o/oauth2/auth\\\",\\\"token_uri\\\":\\\"https://oauth2.googleapis.com/token\\\",\\\"auth_provider_x509_cert_url\\\":\\\"https://www.googleapis.com/oauth2/v1/certs\\\",\\\"client_x509_cert_url\\\":\\\"https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\\\",\\\"universe_domain\\\":\\\"googleapis.com\\\"}\"}",
+      "output": "fnox_proxy_000000000000000000000009 {\"v\":\"[redacted:GCLOUD_CREDENTIALS]\"}",
+      "hits": [
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "form": "raw",
+          "count": 1
+        },
+        {
+          "name": "GCLOUD_CREDENTIALS",
+          "form": "json",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a JSON document: a string without a key-like run has no fragments",
+      "secrets": [
+        {
+          "name": "LOGIN",
+          "value": "{\"user\":\"bob\",\"password\":\"correct horse battery staple\"}",
+          "placeholder": "fnox_proxy_00000000000000000000000a"
+        }
+      ],
+      "input": "password: correct horse battery staple, user bob",
+      "output": "password: correct horse battery staple, user bob",
+      "hits": []
+    },
+    {
+      "name": "a JSON document shorter than 16 bytes is still raw",
+      "secrets": [
+        {
+          "name": "SMALL",
+          "value": "[\"k9#Lm2$Q\"]",
+          "placeholder": "fnox_proxy_00000000000000000000000b"
+        }
+      ],
+      "input": "v=[\"k9#Lm2$Q\"]",
+      "output": "v=fnox_proxy_00000000000000000000000b",
+      "hits": [
+        {
+          "name": "SMALL",
+          "form": "raw",
+          "count": 1
+        }
+      ]
+    },
+    {
       "name": "a placeholder alone is left as is",
       "secrets": [
         {

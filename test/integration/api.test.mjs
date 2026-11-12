@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { generateKeyPairSync, randomBytes } from 'node:crypto';
 import { test } from 'node:test';
 import { compile, FRAGMENT, MIN_VALUE } from '../../dist/index.js';
 
@@ -99,4 +100,71 @@ test('sameLength replaces every form with as many filler bytes as it matched, ke
     compile(secrets, { sameLength: false }).text(`a ${value}`).text,
     `a ${TOKEN.placeholder}`
   );
+});
+
+function serviceAccount() {
+  const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const email = 'x@helix-225321.iam.gserviceaccount.com';
+  return {
+    type: 'service_account',
+    project_id: 'helix-225321',
+    private_key_id: randomBytes(20).toString('hex'),
+    private_key: privateKey.export({ type: 'pkcs8', format: 'pem' }),
+    client_email: email,
+    client_id: '118000000000000000001',
+    auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+    token_uri: 'https://oauth2.googleapis.com/token',
+    auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+    client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(email)}`,
+    universe_domain: 'googleapis.com',
+  };
+}
+
+test('a service-account key sealed whole leaves a JSON body of its public strings as it is', () => {
+  const sa = serviceAccount();
+  const scrubber = compile([
+    { name: 'GCLOUD_CREDENTIALS', value: JSON.stringify(sa), placeholder: TOKEN.placeholder },
+  ]);
+  const script = `const k = "-----BEGIN PRIVATE KEY-----\\n" + b; fetch("${sa.auth_uri}"); // ${sa.client_email}`;
+  const body = JSON.stringify({
+    messages: [
+      {
+        role: 'assistant',
+        content: [{ toolUse: { toolUseId: 't1', name: 'bash', input: { command: script } } }],
+      },
+      { role: 'user', content: [{ text: `see ${sa.auth_uri} and ${sa.client_email}` }] },
+    ],
+  });
+  const out = scrubber.text(body);
+  assert.deepEqual(out.hits, []);
+  assert.equal(out.text, body);
+  assert.doesNotThrow(() => JSON.parse(out.text));
+});
+
+test('a service-account key sealed whole is still caught, whole, cut and as its PEM, in a parseable JSON body', () => {
+  const sa = serviceAccount();
+  const value = JSON.stringify(sa);
+  const scrubber = compile([{ name: 'GCLOUD_CREDENTIALS', value, placeholder: TOKEN.placeholder }]);
+  const pem = sa.private_key;
+  const body = JSON.stringify({
+    messages: [
+      { text: `cat key.json\n${JSON.stringify(sa, null, 2)}` },
+      { text: `jq -c: ${value}` },
+      { text: `head -c 300: ${value.slice(0, 300)}` },
+      { text: `the pem:\n${pem}` },
+      { text: `echo "${pem.slice(100, 400)}"` },
+    ],
+  });
+  const out = scrubber.text(body);
+  const parsed = JSON.parse(out.text);
+  const decoded = parsed.messages.map((m) => m.text).join('\n');
+  assert.ok(!out.text.includes(value) && !decoded.includes(value));
+  assert.ok(!decoded.includes(sa.private_key_id.slice(0, 16)));
+  for (const line of pem.split('\n').filter((l) => l && !l.startsWith('-----'))) {
+    for (let at = 0; at + 16 <= line.length; at++) {
+      assert.ok(!decoded.includes(line.slice(at, at + 16)), `${line.slice(at, at + 16)} survived`);
+    }
+  }
+  assert.ok(decoded.includes(sa.auth_uri));
+  assert.ok(decoded.includes('-----BEGIN PRIVATE KEY-----'));
 });
