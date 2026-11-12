@@ -133,13 +133,34 @@ function strings(document: object): string[] {
   return out;
 }
 
-function keyLike(run: string): boolean {
-  if (!/[0-9]/.test(run) || !/[A-Za-z]/.test(run)) return false;
-  return (/[A-Z]/.test(run) && /[a-z]/.test(run)) || /^[0-9A-Fa-f]+$/.test(run);
+const DOMAIN = '(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}';
+const HOST = new RegExp(`^${DOMAIN}$`);
+const EMAIL = new RegExp(`^[^\\s@]+@${DOMAIN}$`);
+const URL_SHAPE = new RegExp(`^https?://${DOMAIN}(?::[0-9]{1,5})?((?:/[^/?#\\s]*)*)$`);
+const ARMOR = /^-----(?:BEGIN|END) [A-Z0-9 ]+-----$/;
+
+function unescaped(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
 }
 
-function runs(leaf: string): string[] {
-  return [...leaf.matchAll(/[A-Za-z0-9+/=_-]{16,}/g)].map((run) => run[0]).filter(keyLike);
+function address(leaf: string): boolean {
+  if (HOST.test(leaf) || EMAIL.test(leaf)) return true;
+  const url = URL_SHAPE.exec(leaf);
+  if (!url) return false;
+  return url[1]
+    .split('/')
+    .every((segment) => utf8(segment).length < FRAGMENT || EMAIL.test(unescaped(segment)));
+}
+
+function lines(leaf: string): string[] {
+  if (address(leaf)) return [];
+  return leaf
+    .split(/\r\n|\r|\n/)
+    .filter((line) => utf8(line).length >= FRAGMENT && !ARMOR.test(line));
 }
 
 function parsed(value: string): object | null {
@@ -155,7 +176,7 @@ export function fragments(value: string): Fragments {
   const raw = utf8(value);
   const document = parsed(value);
   if (!document) return { pieces: [raw], whole: true };
-  return { pieces: [...new Set(strings(document).flatMap(runs))].map(utf8), whole: false };
+  return { pieces: [...new Set(strings(document).flatMap(lines))].map(utf8), whole: false };
 }
 
 export function shapes(value: string, split: Fragments = fragments(value)): Shape[] {

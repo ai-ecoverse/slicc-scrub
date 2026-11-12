@@ -43,17 +43,16 @@ Each value *v* is matched, as UTF-8 bytes, in these forms. A form is added only 
 
 ## JSON documents
 
-A value that `JSON.parse` reads as an object or an array (a service-account key, an OAuth client file) is mostly public: its syntax, its field names, and strings such as URLs, e-mail addresses, ids and PEM armor, which the conversation around it holds too. So its fragments aren't runs of its text:
+A value that `JSON.parse` reads as an object or an array (a service-account key, an OAuth client file) also holds what's public: its syntax and field names, and strings such as URLs, e-mail addresses and PEM armor, which the conversation around it holds too. So its fragments aren't runs of its text:
 
 - Its `raw` form is the whole value, at any length; its other forms are as above.
-- A **key-like run** is a maximal run of `A–Z a–z 0–9 + / = _ -`, at least 16 bytes long, in a string of the document (decoded, at any depth; field names aren't strings here), that holds a digit and a letter, and either an upper-case and a lower-case letter or only hex digits.
-- A **fragment** is any run of 16 bytes or more of a key-like run: a cut PEM line, API key or hex secret is still found, and none of the boilerplate around it.
-- A string without a key-like run (a project id, an e-mail address, a URL, a client id of digits, a password of words) has no fragments; it's found only within the whole value.
-- A fragment never covers the whole value, so it's always replaced by `[redacted:<name>]`, and it never holds `"`, `\` or a line break, so it never takes the quote or the backslash of a JSON escape around it.
+- Its **fragments** are the runs of 16 bytes or more of each line (split at CR, LF and CRLF) of each string in it (decoded, at any depth; field names aren't strings here), so none spans its syntax, its field names or a line break.
+- Left out are lines that are PEM armor (`-----BEGIN …-----`, `-----END …-----`) and strings that are addresses: a domain name, an e-mail address, or an `http:` or `https:` URL on a domain name, without userinfo, query or fragment, whose path segments are each shorter than 16 bytes or an e-mail address once percent-decoded.
+- A fragment never covers the whole value, so it's always replaced by `[redacted:<name>]`.
 
 ## Matching
 
-- **One Aho–Corasick automaton** over every pattern, on bytes. Fragments are found from their 16-byte windows and extended byte by byte along the value (in a JSON document, along its key-like run). A second automaton over the `base64` and `hex` patterns runs on a view of the input with CR and LF removed, mapped back to the original bytes.
+- **One Aho–Corasick automaton** over every pattern, on bytes. Fragments are found from their 16-byte windows and extended byte by byte along the value (in a JSON document, along its line). A second automaton over the `base64` and `hex` patterns runs on a view of the input with CR and LF removed, mapped back to the original bytes.
 - **Leftmost, then longest:** at each point the match that starts first wins, and among those the longest. Ties go to `raw`, then `fragment`, `json`, `percent`, `html`, `base64`, `hex`, then the earlier secret. Matches never overlap, and replaced text is never scanned again.
 - **Replacements:** a `raw` match (a fragment covering the whole value is one, never in a JSON document) becomes the secret's `placeholder`; anything else becomes `[redacted:<name>]`.
 - **`sameLength: true`** replaces every match, in every form, with exactly as many bytes as it matched: each byte becomes `*` (0x2A), except CR and LF, which stay where they are. The filler is that one fixed byte, nothing taken from the value, the placeholder or the name, so the output has the input's length and line breaks, and length-prefixed framing around a match (an HTTP `Content-Length`, a chunk size, a WebSocket frame) still holds. Matching, the forms, `hits` and streaming are the same as without it; only the replacement differs.

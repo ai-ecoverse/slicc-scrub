@@ -677,8 +677,8 @@
           "placeholder": "fnox_proxy_000000000000000000000009"
         }
       ],
-      "input": "{\"messages\":[{\"role\":\"user\",\"content\":[{\"text\":\"see https://accounts.google.com/o/oauth2/auth, https://oauth2.googleapis.com/token and x@helix-225321.iam.gserviceaccount.com\"}]},{\"role\":\"assistant\",\"content\":[{\"toolUse\":{\"toolUseId\":\"t1\",\"name\":\"bash\",\"input\":{\"command\":\"const k = \\\"-----BEGIN EXAMPLE KEY-----\\\\n\\\" + b; fetch(\\\"https://accounts.google.com/o/oauth2/auth\\\"); // x@helix-225321.iam.gserviceaccount.com\"}}}]},{\"role\":\"user\",\"content\":[{\"text\":\"example_account helix-225321 118000000000000000001 https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\"}]}]}",
-      "output": "{\"messages\":[{\"role\":\"user\",\"content\":[{\"text\":\"see https://accounts.google.com/o/oauth2/auth, https://oauth2.googleapis.com/token and x@helix-225321.iam.gserviceaccount.com\"}]},{\"role\":\"assistant\",\"content\":[{\"toolUse\":{\"toolUseId\":\"t1\",\"name\":\"bash\",\"input\":{\"command\":\"const k = \\\"-----BEGIN EXAMPLE KEY-----\\\\n\\\" + b; fetch(\\\"https://accounts.google.com/o/oauth2/auth\\\"); // x@helix-225321.iam.gserviceaccount.com\"}}}]},{\"role\":\"user\",\"content\":[{\"text\":\"example_account helix-225321 118000000000000000001 https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\"}]}]}",
+      "input": "{\"messages\":[{\"role\":\"user\",\"content\":[{\"text\":\"see https://accounts.google.com/o/oauth2/auth, https://oauth2.googleapis.com/token and x@helix-225321.iam.gserviceaccount.com\"}]},{\"role\":\"assistant\",\"content\":[{\"toolUse\":{\"toolUseId\":\"t1\",\"name\":\"bash\",\"input\":{\"command\":\"const k = \\\"-----BEGIN EXAMPLE KEY-----\\\\n\\\" + b; fetch(\\\"https://accounts.google.com/o/oauth2/auth\\\"); // x@helix-225321.iam.gserviceaccount.com\"}}}]},{\"role\":\"user\",\"content\":[{\"text\":\"example_account helix-225321 https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\"}]}]}",
+      "output": "{\"messages\":[{\"role\":\"user\",\"content\":[{\"text\":\"see https://accounts.google.com/o/oauth2/auth, https://oauth2.googleapis.com/token and x@helix-225321.iam.gserviceaccount.com\"}]},{\"role\":\"assistant\",\"content\":[{\"toolUse\":{\"toolUseId\":\"t1\",\"name\":\"bash\",\"input\":{\"command\":\"const k = \\\"-----BEGIN EXAMPLE KEY-----\\\\n\\\" + b; fetch(\\\"https://accounts.google.com/o/oauth2/auth\\\"); // x@helix-225321.iam.gserviceaccount.com\"}}}]},{\"role\":\"user\",\"content\":[{\"text\":\"example_account helix-225321 https://www.googleapis.com/robot/v1/metadata/x509/x%40helix-225321.iam.gserviceaccount.com\"}]}]}",
       "hits": []
     },
     {
@@ -782,7 +782,7 @@
       ]
     },
     {
-      "name": "a JSON document: a string without a key-like run has no fragments",
+      "name": "a JSON document: a password of words in it is a fragment",
       "secrets": [
         {
           "name": "LOGIN",
@@ -791,8 +791,52 @@
         }
       ],
       "input": "password: correct horse battery staple, user bob",
-      "output": "password: correct horse battery staple, user bob",
-      "hits": []
+      "output": "password: [redacted:LOGIN], user bob",
+      "hits": [
+        {
+          "name": "LOGIN",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a JSON document: a UUID, a lower-case token and a password of symbols in it are fragments",
+      "secrets": [
+        {
+          "name": "KEYS",
+          "value": "{\"id\":\"8f14e45f-ceea-467f-a0e6-1d4f1b3c7a2e\",\"token\":\"lower_token_0123456789abcdef\",\"password\":\"Tr0ub4dor&3!Secure#Pass\",\"hook\":\"https://hooks.example.com/services/T0000/B0000/AbCdEfGhIjKlMnOpQrStUvWx\",\"site\":\"https://docs.example.com/a/b/c\"}",
+          "placeholder": "fnox_proxy_00000000000000000000000c"
+        }
+      ],
+      "input": "id=8f14e45f-ceea-467f-a0e6-1d4f1b3c7a2e t=wer_token_0123456789abcdef p=Tr0ub4dor&3!Secure#Pass",
+      "output": "id=[redacted:KEYS] t=[redacted:KEYS] p=[redacted:KEYS]",
+      "hits": [
+        {
+          "name": "KEYS",
+          "form": "fragment",
+          "count": 3
+        }
+      ]
+    },
+    {
+      "name": "a JSON document: a URL with a long path segment is a fragment, a short one is left alone",
+      "secrets": [
+        {
+          "name": "KEYS",
+          "value": "{\"id\":\"8f14e45f-ceea-467f-a0e6-1d4f1b3c7a2e\",\"token\":\"lower_token_0123456789abcdef\",\"password\":\"Tr0ub4dor&3!Secure#Pass\",\"hook\":\"https://hooks.example.com/services/T0000/B0000/AbCdEfGhIjKlMnOpQrStUvWx\",\"site\":\"https://docs.example.com/a/b/c\"}",
+          "placeholder": "fnox_proxy_00000000000000000000000c"
+        }
+      ],
+      "input": "post hooks.example.com/services/T0000/B0000/AbCdEfGhIjKlMnOpQrStUvWx then https://docs.example.com/a/b/c",
+      "output": "post [redacted:KEYS] then https://docs.example.com/a/b/c",
+      "hits": [
+        {
+          "name": "KEYS",
+          "form": "fragment",
+          "count": 1
+        }
+      ]
     },
     {
       "name": "a JSON document shorter than 16 bytes is still raw",

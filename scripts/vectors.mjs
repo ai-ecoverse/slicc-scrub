@@ -37,6 +37,14 @@ S.LOGIN = {
   value: JSON.stringify({ user: 'bob', password: 'correct horse battery staple' }),
   placeholder: P(10),
 };
+const KEYS = {
+  id: '8f14e45f-ceea-467f-a0e6-1d4f1b3c7a2e',
+  token: 'lower_token_0123456789abcdef',
+  password: 'Tr0ub4dor&3!Secure#Pass',
+  hook: 'https://hooks.example.com/services/T0000/B0000/AbCdEfGhIjKlMnOpQrStUvWx',
+  site: 'https://docs.example.com/a/b/c',
+};
+S.KEYS = { name: 'KEYS', value: JSON.stringify(KEYS), placeholder: P(12) };
 const red = (secret) => `[redacted:${secret.name}]`;
 const b64 = (text) => Buffer.from(text).toString('base64');
 const b64u = (text) => Buffer.from(text).toString('base64url');
@@ -286,7 +294,7 @@ const converse = JSON.stringify({
     },
     {
       role: 'user',
-      content: [{ text: `${SA.type} ${SA.project_id} ${SA.client_id} ${SA.client_x509_cert_url}` }],
+      content: [{ text: `${SA.type} ${SA.project_id} ${SA.client_x509_cert_url}` }],
     },
   ],
 });
@@ -329,10 +337,29 @@ add(
   ]
 );
 add(
-  'a JSON document: a string without a key-like run has no fragments',
+  'a JSON document: a password of words in it is a fragment',
   [S.LOGIN],
-  ['password: correct horse battery staple, user bob'],
-  []
+  ['password: ', as('correct horse battery staple', S.LOGIN), ', user bob'],
+  [['LOGIN', 'fragment', 1]]
+);
+add(
+  'a JSON document: a UUID, a lower-case token and a password of symbols in it are fragments',
+  [S.KEYS],
+  [
+    'id=',
+    as(KEYS.id, S.KEYS),
+    ' t=',
+    as(KEYS.token.slice(2), S.KEYS),
+    ' p=',
+    as(KEYS.password, S.KEYS),
+  ],
+  [['KEYS', 'fragment', 3]]
+);
+add(
+  'a JSON document: a URL with a long path segment is a fragment, a short one is left alone',
+  [S.KEYS],
+  ['post ', as(KEYS.hook.slice(8), S.KEYS), ' then ', KEYS.site],
+  [['KEYS', 'fragment', 1]]
 );
 add(
   'a JSON document shorter than 16 bytes is still raw',
