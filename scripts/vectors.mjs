@@ -12,6 +12,39 @@ const S = {
   INNER: { name: 'INNER', value: 'abcdefgh12345678', placeholder: P(7) },
   OUTER: { name: 'OUTER', value: 'abcdefgh12345678XYZ', placeholder: P(8) },
 };
+const LINES = Buffer.from(Array.from({ length: 144 }, (_, i) => (i * 73 + 41) & 255))
+  .toString('base64')
+  .match(/.{1,64}/g);
+const PEM = `-----BEGIN EXAMPLE KEY-----\n${LINES.join('\n')}\n-----END EXAMPLE KEY-----\n`;
+const EMAIL = 'x@helix-225321.iam.gserviceaccount.com';
+const KEY_ID = '3f2a9c1e7b4d6f8a0c2e4b6d8f1a3c5e7b9d0f2a';
+const SA = {
+  type: 'example_account',
+  project_id: 'helix-225321',
+  key_id: KEY_ID,
+  pem: PEM,
+  client_email: EMAIL,
+  client_id: '118000000000000000001',
+  auth_uri: 'https://accounts.google.com/o/oauth2/auth',
+  token_uri: 'https://oauth2.googleapis.com/token',
+  auth_provider_x509_cert_url: 'https://www.googleapis.com/oauth2/v1/certs',
+  client_x509_cert_url: `https://www.googleapis.com/robot/v1/metadata/x509/${encodeURIComponent(EMAIL)}`,
+  universe_domain: 'googleapis.com',
+};
+S.SA = { name: 'GCLOUD_CREDENTIALS', value: JSON.stringify(SA), placeholder: P(9) };
+S.LOGIN = {
+  name: 'LOGIN',
+  value: JSON.stringify({ user: 'bob', password: 'correct horse battery staple' }),
+  placeholder: P(10),
+};
+const KEYS = {
+  id: '8f14e45f-ceea-467f-a0e6-1d4f1b3c7a2e',
+  token: 'lower_token_0123456789abcdef',
+  password: 'Tr0ub4dor&3!Secure#Pass',
+  hook: 'https://hooks.example.com/services/T0000/B0000/AbCdEfGhIjKlMnOpQrStUvWx',
+  site: 'https://docs.example.com/a/b/c',
+};
+S.KEYS = { name: 'KEYS', value: JSON.stringify(KEYS), placeholder: P(12) };
 const red = (secret) => `[redacted:${secret.name}]`;
 const b64 = (text) => Buffer.from(text).toString('base64');
 const b64u = (text) => Buffer.from(text).toString('base64url');
@@ -250,6 +283,106 @@ add(
   [S.GH],
   [raw(S.GH), S.GH.placeholder],
   [['GH_TOKEN', 'raw', 1]]
+);
+const script = `const k = "-----BEGIN EXAMPLE KEY-----\\n" + b; fetch("${SA.auth_uri}"); // ${EMAIL}`;
+const converse = JSON.stringify({
+  messages: [
+    { role: 'user', content: [{ text: `see ${SA.auth_uri}, ${SA.token_uri} and ${EMAIL}` }] },
+    {
+      role: 'assistant',
+      content: [{ toolUse: { toolUseId: 't1', name: 'bash', input: { command: script } } }],
+    },
+    {
+      role: 'user',
+      content: [{ text: `${SA.type} ${SA.project_id} ${SA.client_x509_cert_url}` }],
+    },
+  ],
+});
+add('a JSON document: its public strings and syntax are left alone', [S.SA], [converse], []);
+add(
+  'a JSON document: a cut key line is a fragment',
+  [S.SA],
+  ['head -c: ', as(LINES[1].slice(0, 30), S.SA), '\n'],
+  [['GCLOUD_CREDENTIALS', 'fragment', 1]]
+);
+add(
+  'a JSON document: a hex secret in it, cut, is a fragment',
+  [S.SA],
+  ['id ', as(KEY_ID.slice(4, 24), S.SA), '.'],
+  [['GCLOUD_CREDENTIALS', 'fragment', 1]]
+);
+add(
+  'a JSON document: its PEM as a file keeps only its armor',
+  [S.SA],
+  [
+    '-----BEGIN EXAMPLE KEY-----\n',
+    ...LINES.flatMap((line) => [as(line, S.SA), '\n']),
+    '-----END EXAMPLE KEY-----\n',
+  ],
+  [['GCLOUD_CREDENTIALS', 'fragment', LINES.length]]
+);
+add(
+  'a JSON document: a key line between \\" and \\\\ in a JSON body keeps the escapes',
+  [S.SA],
+  ['{"command":"echo \\"', as(LINES[0], S.SA), '\\\\n\\"', as(LINES[1], S.SA), '\\\\\\" > k"}'],
+  [['GCLOUD_CREDENTIALS', 'fragment', 2]]
+);
+add(
+  'a JSON document: the whole value, raw and JSON-escaped',
+  [S.SA],
+  [raw(S.SA), ' {"v":"', as(JSON.stringify(S.SA.value).slice(1, -1), S.SA), '"}'],
+  [
+    ['GCLOUD_CREDENTIALS', 'raw', 1],
+    ['GCLOUD_CREDENTIALS', 'json', 1],
+  ]
+);
+add(
+  'a JSON document: a password of words in it is a fragment',
+  [S.LOGIN],
+  ['password: ', as('correct horse battery staple', S.LOGIN), ', user bob'],
+  [['LOGIN', 'fragment', 1]]
+);
+add(
+  'a JSON document: a UUID, a lower-case token and a password of symbols in it are fragments',
+  [S.KEYS],
+  [
+    'id=',
+    as(KEYS.id, S.KEYS),
+    ' t=',
+    as(KEYS.token.slice(2), S.KEYS),
+    ' p=',
+    as(KEYS.password, S.KEYS),
+  ],
+  [['KEYS', 'fragment', 3]]
+);
+add(
+  'a JSON document: a URL with a long path segment is a fragment, a short one is left alone',
+  [S.KEYS],
+  ['post ', as(KEYS.hook.slice(8), S.KEYS), ' then ', KEYS.site],
+  [['KEYS', 'fragment', 1]]
+);
+S.QUOTE = {
+  name: 'QUOTE',
+  value: JSON.stringify({ password: 'abc"defghijklmnopqrstu\\vwxyz0123456789ABCDEF' }),
+  placeholder: P(13),
+};
+add(
+  'a JSON document: a fragment never holds a quote or a backslash of its strings',
+  [S.QUOTE],
+  [
+    '{"text":"pw is abc\\"',
+    as('defghijklmnopqrstu', S.QUOTE),
+    '\\\\',
+    as('vwxyz0123456789ABCDEF', S.QUOTE),
+    '"}',
+  ],
+  [['QUOTE', 'fragment', 2]]
+);
+add(
+  'a JSON document shorter than 16 bytes is still raw',
+  [{ name: 'SMALL', value: '["k9#Lm2$Q"]', placeholder: P(11) }],
+  ['v=', ['["k9#Lm2$Q"]', P(11)]],
+  [['SMALL', 'raw', 1]]
 );
 add('a placeholder alone is left as is', [S.GH], [`env GH_TOKEN=${S.GH.placeholder}`], []);
 

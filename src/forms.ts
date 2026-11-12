@@ -8,12 +8,19 @@ export interface Source {
   secret: number;
   form: Form;
   offset?: number;
+  piece?: number;
 }
 
 export interface Shape {
   bytes: Uint8Array;
   form: Form;
   offset?: number;
+  piece?: number;
+}
+
+export interface Fragments {
+  pieces: Uint8Array[];
+  whole: boolean;
 }
 
 const encoder = new TextEncoder();
@@ -108,14 +115,85 @@ function encodings(bytes: Uint8Array): string[] {
   return [...standard, ...standard.map(urlSafe)];
 }
 
-export function shapes(value: string): Shape[] {
+function windows(length: number): number[] {
+  const out: number[] = [];
+  for (let offset = 0; offset + FRAGMENT <= length; offset++) out.push(offset);
+  return out;
+}
+
+function strings(document: object): string[] {
+  const out: string[] = [];
+  const stack: unknown[] = [document];
+  while (stack.length > 0) {
+    const item = stack.pop();
+    if (typeof item === 'string') out.push(item);
+    if (typeof item !== 'object' || item === null) continue;
+    for (const child of Object.values(item)) stack.push(child);
+  }
+  return out;
+}
+
+const DOMAIN = '(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\\.)+[A-Za-z]{2,63}';
+const HOST = new RegExp(`^${DOMAIN}$`);
+const EMAIL = new RegExp(`^[^\\s@]+@${DOMAIN}$`);
+const URL_SHAPE = new RegExp(`^https?://${DOMAIN}(?::[0-9]{1,5})?((?:/[^/?#\\s]*)*)$`);
+const ARMOR = /^-----(?:BEGIN|END) [A-Z0-9 ]+-----$/;
+
+function unescaped(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+function address(leaf: string): boolean {
+  if (HOST.test(leaf) || EMAIL.test(leaf)) return true;
+  const url = URL_SHAPE.exec(leaf);
+  if (!url) return false;
+  return url[1]
+    .split('/')
+    .every((segment) => utf8(segment).length < FRAGMENT || EMAIL.test(unescaped(segment)));
+}
+
+function lines(leaf: string): string[] {
+  if (address(leaf)) return [];
+  return leaf
+    .split(/[\r\n"\\]/)
+    .filter((line) => utf8(line).length >= FRAGMENT && !ARMOR.test(line));
+}
+
+function parsed(value: string): object | null {
+  try {
+    const document: unknown = JSON.parse(value);
+    return typeof document === 'object' && document !== null ? document : null;
+  } catch {
+    return null;
+  }
+}
+
+export function fragments(value: string): Fragments {
+  const raw = utf8(value);
+  const document = parsed(value);
+  if (!document) return { pieces: [raw], whole: true };
+  return { pieces: [...new Set(strings(document).flatMap(lines))].map(utf8), whole: false };
+}
+
+export function shapes(value: string, split: Fragments = fragments(value)): Shape[] {
   const raw = utf8(value);
   const seen = new Set<string>([value]);
   const out: Shape[] = [];
-  if (raw.length < FRAGMENT) out.push({ bytes: raw, form: 'raw' });
-  for (let offset = 0; raw.length >= FRAGMENT && offset + FRAGMENT <= raw.length; offset++) {
-    out.push({ bytes: raw.subarray(offset, offset + FRAGMENT), form: 'fragment', offset });
-  }
+  if (raw.length < FRAGMENT || !split.whole) out.push({ bytes: raw, form: 'raw' });
+  split.pieces.forEach((bytes, piece) => {
+    for (const offset of windows(bytes.length)) {
+      out.push({
+        bytes: bytes.subarray(offset, offset + FRAGMENT),
+        form: 'fragment',
+        offset,
+        piece,
+      });
+    }
+  });
   const add = (text: string, form: Form) => {
     if (seen.has(text)) return;
     seen.add(text);
