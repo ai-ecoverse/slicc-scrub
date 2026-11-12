@@ -46,7 +46,7 @@ Each value *v* is matched, as UTF-8 bytes, in these forms. A form is added only 
 A value that `JSON.parse` reads as an object or an array (a service-account key, an OAuth client file) also holds what's public: its syntax and field names, and strings such as URLs, e-mail addresses and PEM armor, which the conversation around it holds too. So its fragments aren't runs of its text:
 
 - Its `raw` form is the whole value, at any length; its other forms are as above.
-- Its **fragments** are the runs of 16 bytes or more of each piece of each string in it (decoded, at any depth; field names aren't strings here), cut at CR, LF, `"` and `\`. So none spans its syntax or its field names, and none holds a character that JSON escapes with a backslash, so none takes the quote or the backslash of an escape around it.
+- Its **fragments** are the runs of 16 bytes or more of each piece of each string in it (decoded, at any depth; field names aren't strings here), cut at CR, LF, `"` and `\`. So none spans its syntax or its field names, and none holds a quote or a backslash. A match can still begin at the second character of an escape (the `/` of `\/`, the `n` of `\n`), as for any value, so a consumer that must keep a JSON body valid scrubs its strings decoded, as the vault does.
 - Left out are lines that are PEM armor (`-----BEGIN …-----`, `-----END …-----`) and strings that are addresses: a domain name, an e-mail address, or an `http:` or `https:` URL on a domain name, without userinfo, query or fragment, whose path segments are each shorter than 16 bytes or an e-mail address once percent-decoded.
 - A fragment never covers the whole value, so it's always replaced by `[redacted:<name>]`.
 
