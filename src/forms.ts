@@ -159,7 +159,7 @@ function address(leaf: string): boolean {
 function lines(leaf: string): string[] {
   if (address(leaf)) return [];
   return leaf
-    .split(/\r\n|\r|\n/)
+    .split(/[\r\n"\\]/)
     .filter((line) => utf8(line).length >= FRAGMENT && !ARMOR.test(line));
 }
 

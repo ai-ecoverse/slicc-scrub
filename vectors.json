@@ -839,6 +839,25 @@
       ]
     },
     {
+      "name": "a JSON document: a fragment never holds a quote or a backslash of its strings",
+      "secrets": [
+        {
+          "name": "QUOTE",
+          "value": "{\"password\":\"abc\\\"defghijklmnopqrstu\\\\vwxyz0123456789ABCDEF\"}",
+          "placeholder": "fnox_proxy_00000000000000000000000d"
+        }
+      ],
+      "input": "{\"text\":\"pw is abc\\\"defghijklmnopqrstu\\\\vwxyz0123456789ABCDEF\"}",
+      "output": "{\"text\":\"pw is abc\\\"[redacted:QUOTE]\\\\[redacted:QUOTE]\"}",
+      "hits": [
+        {
+          "name": "QUOTE",
+          "form": "fragment",
+          "count": 2
+        }
+      ]
+    },
+    {
       "name": "a JSON document shorter than 16 bytes is still raw",
       "secrets": [
         {

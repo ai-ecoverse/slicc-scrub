@@ -361,6 +361,23 @@ add(
   ['post ', as(KEYS.hook.slice(8), S.KEYS), ' then ', KEYS.site],
   [['KEYS', 'fragment', 1]]
 );
+S.QUOTE = {
+  name: 'QUOTE',
+  value: JSON.stringify({ password: 'abc"defghijklmnopqrstu\\vwxyz0123456789ABCDEF' }),
+  placeholder: P(13),
+};
+add(
+  'a JSON document: a fragment never holds a quote or a backslash of its strings',
+  [S.QUOTE],
+  [
+    '{"text":"pw is abc\\"',
+    as('defghijklmnopqrstu', S.QUOTE),
+    '\\\\',
+    as('vwxyz0123456789ABCDEF', S.QUOTE),
+    '"}',
+  ],
+  [['QUOTE', 'fragment', 2]]
+);
 add(
   'a JSON document shorter than 16 bytes is still raw',
   [{ name: 'SMALL', value: '["k9#Lm2$Q"]', placeholder: P(11) }],
